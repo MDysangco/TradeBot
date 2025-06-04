@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
+  <metadata>
+    <id>TradeBot</id>
+    <version>1.0.0</version>
+    <authors>TradeBot</authors>
+    <description>Package Description</description>
+    <repository type="git" />
+    <dependencies>
+      <group targetFramework="net8.0">
+        <dependency id="Nethereum.Web3" version="5.0.0" exclude="Build,Analyzers" />
+        <dependency id="Solnet.Rpc" version="6.1.0" exclude="Build,Analyzers" />
+        <dependency id="Solnet.Wallet" version="6.1.0" exclude="Build,Analyzers" />
+      </group>
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="C:\Github\TradeBot\TradeBot\bin\Debug\net8.0\TradeBot.runtimeconfig.json" target="lib\net8.0\TradeBot.runtimeconfig.json" />
+    <file src="C:\Github\TradeBot\TradeBot\bin\Debug\net8.0\TradeBot.dll" target="lib\net8.0\TradeBot.dll" />
+  </files>
+</package>
