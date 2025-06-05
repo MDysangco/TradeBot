@@ -6,15 +6,15 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace TradeBot.NewFolder
+namespace TradeBot.Network
 {
-	internal class UniSwap
+	internal class Phantom
 	{
-		public class UniswapWallet
+		public class PhantomWallet
 		{
 			private readonly Web3 web3;
 
-			public UniswapWallet(string rpcUrl)
+			public PhantomWallet(string rpcUrl)
 			{
 				web3 = new Web3(rpcUrl);
 			}

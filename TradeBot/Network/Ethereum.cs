@@ -5,11 +5,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace TradeBot.NewFolder
+namespace TradeBot.Network
 {
 	internal class Ethereum
 	{
-
 		public class BaseWallet
 		{
 			private readonly string _apiKey;
@@ -31,7 +30,7 @@ namespace TradeBot.NewFolder
 				return ethBalance;
 			}
 
-			public async Task GetErc20TokenBalancesAsync(string walletAddress)
+			public async Task<List<TokenBalance>> GetBaseErc20TokenBalancesAsync(string walletAddress)
 			{
 				string url = $"https://api.basescan.org/api?module=account&action=tokentx&address={walletAddress}&page=1&offset=100&sort=asc&apikey={_apiKey}";
 				var response = await _httpClient.GetStringAsync(url);
@@ -40,35 +39,48 @@ namespace TradeBot.NewFolder
 				if (result["status"]?.ToString() != "1")
 				{
 					Console.WriteLine($"Error fetching token transactions: {result["message"]} - {result["result"]}");
-					return;
+					return new List<TokenBalance>();
 				}
 
 				var tokens = result["result"];
-				var tokenBalances = new Dictionary<string, decimal>();
+				var tokenMap = new Dictionary<string, (string symbol, int decimals, decimal total)>();
 
 				foreach (var tx in tokens)
 				{
-					var tokenSymbol = tx["tokenSymbol"]?.ToString();
-					var tokenDecimal = int.Parse(tx["tokenDecimal"]?.ToString() ?? "18");
-					var value = decimal.Parse(tx["value"]?.ToString() ?? "0") / (decimal)Math.Pow(10, tokenDecimal);
-					var toAddress = tx["to"]?.ToString().ToLower();
-					var fromAddress = tx["from"]?.ToString().ToLower();
-					var contractAddress = tx["contractAddress"]?.ToString().ToLower();
+					var symbol = tx["tokenSymbol"]?.ToString() ?? "UNKNOWN";
+					var tokenDecimal = int.TryParse(tx["tokenDecimal"]?.ToString(), out var d) ? d : 18;
+					var value = decimal.TryParse(tx["value"]?.ToString(), out var v) ? v : 0;
+					value /= (decimal)Math.Pow(10, tokenDecimal);
 
-					if (!tokenBalances.ContainsKey(contractAddress))
-						tokenBalances[contractAddress] = 0;
+					var to = tx["to"]?.ToString();
+					var from = tx["from"]?.ToString();
+					var contract = tx["contractAddress"]?.ToString()?.ToLower();
 
-					if (toAddress == walletAddress.ToLower())
-						tokenBalances[contractAddress] += value;
-					else if (fromAddress == walletAddress.ToLower())
-						tokenBalances[contractAddress] -= value;
+					if (string.IsNullOrEmpty(contract)) continue;
+
+					if (!tokenMap.ContainsKey(contract))
+						tokenMap[contract] = (symbol, tokenDecimal, 0);
+
+					var balance = tokenMap[contract].total;
+
+					if (to?.Equals(walletAddress, StringComparison.OrdinalIgnoreCase) == true)
+						balance += value;
+					else if (from?.Equals(walletAddress, StringComparison.OrdinalIgnoreCase) == true)
+						balance -= value;
+
+					tokenMap[contract] = (symbol, tokenDecimal, balance);
 				}
 
-				foreach (var token in tokenBalances)
-				{
-					if (token.Value > 0)
-						Console.WriteLine($"{token.Key}: {token.Value}");
-				}
+				return tokenMap
+					.Where(kvp => kvp.Value.total > 0)
+					.Select(kvp => new TokenBalance
+					{
+						ContractAddress = kvp.Key,
+						Symbol = kvp.Value.symbol,
+						Decimals = kvp.Value.decimals,
+						Balance = kvp.Value.total
+					})
+					.ToList();
 			}
 		}
 
@@ -95,7 +107,7 @@ namespace TradeBot.NewFolder
 				return ethBalance;
 			}
 
-			public async Task GetErc20TokenBalancesAsync(string walletAddress)
+			public async Task<List<TokenBalance>> GetErc20TokenBalancesAsync(string walletAddress)
 			{
 				string url = $"https://api.etherscan.io/api?module=account&action=tokentx&address={walletAddress}&sort=desc&apikey={_apiKey}";
 
@@ -108,14 +120,16 @@ namespace TradeBot.NewFolder
 				foreach (var tx in tokens)
 				{
 					var symbol = tx["tokenSymbol"]?.ToString() ?? "UNKNOWN";
-					var tokenName = tx["tokenName"]?.ToString() ?? "Unnamed Token";
-					var tokenDecimal = int.Parse(tx["tokenDecimal"].ToString());
-					var value = decimal.Parse(tx["value"].ToString()) / (decimal)Math.Pow(10, tokenDecimal);
-					var tokenContract = tx["contractAddress"].ToString();
-					var to = tx["to"].ToString();
-					var from = tx["from"].ToString();
+					var tokenDecimal = int.TryParse(tx["tokenDecimal"]?.ToString(), out var d) ? d : 18;
+					var value = decimal.TryParse(tx["value"]?.ToString(), out var v) ? v : 0;
+					value /= (decimal)Math.Pow(10, tokenDecimal);
 
-					// Approximate balance by aggregating inflow - outflow
+					var tokenContract = tx["contractAddress"]?.ToString();
+					var to = tx["to"]?.ToString();
+					var from = tx["from"]?.ToString();
+
+					if (string.IsNullOrEmpty(tokenContract)) continue;
+
 					if (!tokenMap.ContainsKey(tokenContract))
 						tokenMap[tokenContract] = (symbol, tokenDecimal, 0);
 
@@ -129,15 +143,30 @@ namespace TradeBot.NewFolder
 					tokenMap[tokenContract] = (symbol, tokenDecimal, balance);
 				}
 
-				foreach (var (contract, (symbol, decimals, balance)) in tokenMap)
-				{
-					if (balance > 0)
-						Console.WriteLine($"{symbol}: {balance:N4}");
-				}
+				// Create list of TokenBalance objects
+				var tokenBalances = tokenMap
+					.Where(kvp => kvp.Value.total > 0)
+					.Select(kvp => new TokenBalance
+					{
+						ContractAddress = kvp.Key,
+						Symbol = kvp.Value.symbol,
+						Decimals = kvp.Value.decimals,
+						Balance = kvp.Value.total
+					})
+					.ToList();
+
+				return tokenBalances;
 			}
 
-
-
 		}
+
+		public class TokenBalance
+		{
+			public string ContractAddress { get; set; }
+			public string Symbol { get; set; }
+			public int Decimals { get; set; }
+			public decimal Balance { get; set; }
+		}
+
 	}
 }

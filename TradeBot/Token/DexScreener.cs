@@ -12,10 +12,10 @@ namespace TradeBot.Token
 	{
 		private readonly HttpClient _httpClient = new HttpClient();
 
-		public async Task<string> GetTokenInfo(string chainId, string[] tokenAddresses)
+		public async Task<string> GetTokenInfo(Chain chain, string tokenAddresses)
 		{
 			string joinedAddresses = string.Join(",", tokenAddresses);
-			string url = $"https://api.dexscreener.com/tokens/v1/{chainId}/{joinedAddresses}";
+			string url = $"https://api.dexscreener.com/tokens/v1/{chain.ToString().ToLower()}/{joinedAddresses}";
 
 			var request = new HttpRequestMessage(HttpMethod.Get, url);
 			request.Headers.Add("Accept", "*/*");
@@ -28,6 +28,13 @@ namespace TradeBot.Token
 			}
 
 			return await response.Content.ReadAsStringAsync();
+		}
+
+		public enum Chain
+		{
+			ETHEREUM = 1,
+			BASE = 2,
+			SOLANA = 3,
 		}
 
 
