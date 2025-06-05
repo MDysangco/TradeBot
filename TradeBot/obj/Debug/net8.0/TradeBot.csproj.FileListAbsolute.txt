@@ -61,3 +61,4 @@ C:\Github\TradeBot\TradeBot\bin\Debug\net8.0\System.Text.Encodings.Web.dll
 C:\Github\TradeBot\TradeBot\bin\Debug\net8.0\System.Text.Json.dll
 C:\Github\TradeBot\TradeBot\bin\Debug\net8.0\runtimes\browser\lib\net8.0\System.Text.Encodings.Web.dll
 C:\Github\TradeBot\TradeBot\bin\Debug\net8.0\appsettings.json
+C:\Github\TradeBot\TradeBot\obj\Debug\net8.0\TradeBot.sourcelink.json
