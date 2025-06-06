@@ -1,0 +1,10 @@
+- If setting up in new pc you need to instal playwright. Open GitBash and head to Project directory and run this script.
+
+dotnet tool install --global Microsoft.Playwright.CLI
+playwright install
+
+- Dexscreener can't be accessed by bots due to cloudflare, so instead we'll initiate the browser with port 9222 then connect our webapp.
+You should always close all instances of the browser before you open it. Once you've done that, run one of these lines in GitBash and it should open a browser of your choosing.
+
+start chrome.exe --remote-debugging-port=9222 --user-data-dir="C:\chrome-profile" //for chrome
+start msedge --remote-debugging-port=9222 --user-data-dir="C:\edge-playwright-profile" // for edge
