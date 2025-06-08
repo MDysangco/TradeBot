@@ -1,9 +1,11 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using Nethereum.Signer;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using TradeBot.Token;
 
 namespace TradeBot.Network
 {
@@ -32,55 +34,62 @@ namespace TradeBot.Network
 
 			public async Task<List<TokenBalance>> GetBaseErc20TokenBalancesAsync(string walletAddress)
 			{
-				string url = $"https://api.basescan.org/api?module=account&action=tokentx&address={walletAddress}&page=1&offset=100&sort=asc&apikey={_apiKey}";
+				string url = $"https://api.basescan.org/api?module=account&action=tokentx&address={walletAddress}&sort=desc&apikey={_apiKey}";
+
 				var response = await _httpClient.GetStringAsync(url);
 				var result = JObject.Parse(response);
-
-				if (result["status"]?.ToString() != "1")
-				{
-					Console.WriteLine($"Error fetching token transactions: {result["message"]} - {result["result"]}");
-					return new List<TokenBalance>();
-				}
-
 				var tokens = result["result"];
+
 				var tokenMap = new Dictionary<string, (string symbol, int decimals, decimal total)>();
 
 				foreach (var tx in tokens)
 				{
 					var symbol = tx["tokenSymbol"]?.ToString() ?? "UNKNOWN";
 					var tokenDecimal = int.TryParse(tx["tokenDecimal"]?.ToString(), out var d) ? d : 18;
-					var value = decimal.TryParse(tx["value"]?.ToString(), out var v) ? v : 0;
-					value /= (decimal)Math.Pow(10, tokenDecimal);
+					var rawValue = decimal.TryParse(tx["value"]?.ToString(), out var v) ? v : 0;
+					var value = rawValue / (decimal)Math.Pow(10, tokenDecimal);
 
+					var tokenContract = tx["contractAddress"]?.ToString();
 					var to = tx["to"]?.ToString();
 					var from = tx["from"]?.ToString();
-					var contract = tx["contractAddress"]?.ToString()?.ToLower();
 
-					if (string.IsNullOrEmpty(contract)) continue;
+					if (string.IsNullOrEmpty(tokenContract)) continue;
 
-					if (!tokenMap.ContainsKey(contract))
-						tokenMap[contract] = (symbol, tokenDecimal, 0);
+					if (!tokenMap.ContainsKey(tokenContract))
+						tokenMap[tokenContract] = (symbol, tokenDecimal, 0);
 
-					var balance = tokenMap[contract].total;
+					var entry = tokenMap[tokenContract];
 
-					if (to?.Equals(walletAddress, StringComparison.OrdinalIgnoreCase) == true)
-						balance += value;
-					else if (from?.Equals(walletAddress, StringComparison.OrdinalIgnoreCase) == true)
-						balance -= value;
+					// Track current balance
+					if (to.Equals(walletAddress, StringComparison.OrdinalIgnoreCase))
+					{
+						entry.total += value;
+					}
+					else if (from.Equals(walletAddress, StringComparison.OrdinalIgnoreCase))
+					{
+						entry.total -= value;
 
-					tokenMap[contract] = (symbol, tokenDecimal, balance);
+					}
+
+					tokenMap[tokenContract] = entry;
+					await Task.Delay(1500);
 				}
 
-				return tokenMap
+				// Convert to TokenBalance list
+				var tokenBalances = tokenMap
 					.Where(kvp => kvp.Value.total > 0)
 					.Select(kvp => new TokenBalance
 					{
 						ContractAddress = kvp.Key,
 						Symbol = kvp.Value.symbol,
 						Decimals = kvp.Value.decimals,
-						Balance = kvp.Value.total
+						Balance = kvp.Value.total,
+						Chain = Helper.Chain.BASE,
+
 					})
 					.ToList();
+
+				return tokenBalances;
 			}
 		}
 
@@ -115,43 +124,58 @@ namespace TradeBot.Network
 				var result = JObject.Parse(response);
 				var tokens = result["result"];
 
-				var tokenMap = new Dictionary<string, (string symbol, int decimals, decimal total)>();
+				// tokenContract => (symbol, decimals, balance, buyInUsd, buyInTokenAmount)
+				var tokenMap = new Dictionary<string, (string symbol, int decimals, decimal balance, string UnixTimestamp)>();
 
 				foreach (var tx in tokens)
 				{
-					var symbol = tx["tokenSymbol"]?.ToString() ?? "UNKNOWN";
-					var tokenDecimal = int.TryParse(tx["tokenDecimal"]?.ToString(), out var d) ? d : 18;
-					var value = decimal.TryParse(tx["value"]?.ToString(), out var v) ? v : 0;
-					value /= (decimal)Math.Pow(10, tokenDecimal);
+					try
+					{
+						var symbol = tx["tokenSymbol"]?.ToString() ?? "UNKNOWN";
+						var tokenDecimal = int.TryParse(tx["tokenDecimal"]?.ToString(), out var d) ? d : 18;
+						var value = decimal.TryParse(tx["value"]?.ToString(), out var v) ? v : 0;
+						value /= (decimal)Math.Pow(10, tokenDecimal);
 
-					var tokenContract = tx["contractAddress"]?.ToString();
-					var to = tx["to"]?.ToString();
-					var from = tx["from"]?.ToString();
+						var tokenContract = tx["contractAddress"]?.ToString();
+						var to = tx["to"]?.ToString();
+						var from = tx["from"]?.ToString();
 
-					if (string.IsNullOrEmpty(tokenContract)) continue;
+						if (string.IsNullOrEmpty(tokenContract)) continue;
 
-					if (!tokenMap.ContainsKey(tokenContract))
-						tokenMap[tokenContract] = (symbol, tokenDecimal, 0);
+						if (!tokenMap.ContainsKey(tokenContract))
+							tokenMap[tokenContract] = (symbol, tokenDecimal, 0, String.Empty);
 
-					var balance = tokenMap[tokenContract].total;
+						var (sym, dec, currentBalance, time) = tokenMap[tokenContract];
 
-					if (to.Equals(walletAddress, StringComparison.OrdinalIgnoreCase))
-						balance += value;
-					else if (from.Equals(walletAddress, StringComparison.OrdinalIgnoreCase))
-						balance -= value;
+						if (to.Equals(walletAddress, StringComparison.OrdinalIgnoreCase))
+						{
+							currentBalance += value;
+						}
+						else if (from.Equals(walletAddress, StringComparison.OrdinalIgnoreCase))
+						{
+							currentBalance -= value;
+						}
 
-					tokenMap[tokenContract] = (symbol, tokenDecimal, balance);
+						tokenMap[tokenContract] = (sym, dec, currentBalance, time);
+					} 
+					catch (Exception ex) 
+					{ 
+						Console.WriteLine(ex.ToString());
+					}
+
+					await Task.Delay(1500);
 				}
 
 				// Create list of TokenBalance objects
 				var tokenBalances = tokenMap
-					.Where(kvp => kvp.Value.total > 0)
+					.Where(kvp => kvp.Value.balance > 0)
 					.Select(kvp => new TokenBalance
 					{
 						ContractAddress = kvp.Key,
 						Symbol = kvp.Value.symbol,
 						Decimals = kvp.Value.decimals,
-						Balance = kvp.Value.total
+						Balance = kvp.Value.balance,
+						Chain = Helper.Chain.ETHEREUM,
 					})
 					.ToList();
 
@@ -162,6 +186,7 @@ namespace TradeBot.Network
 
 		public class TokenBalance
 		{
+			public Helper.Chain Chain { get; set; }
 			public string ContractAddress { get; set; }
 			public string Symbol { get; set; }
 			public int Decimals { get; set; }

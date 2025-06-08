@@ -58,6 +58,10 @@
               "target": "Package",
               "version": "[9.0.5, )"
             },
+            "Microsoft.Playwright": {
+              "target": "Package",
+              "version": "[1.52.0, )"
+            },
             "Nethereum.Web3": {
               "target": "Package",
               "version": "[5.0.0, )"

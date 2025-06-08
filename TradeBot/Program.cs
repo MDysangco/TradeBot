@@ -4,7 +4,7 @@ using TradeBot;
 using Microsoft.Extensions.Configuration;
 using TradeBot.Network;
 using static TradeBot.Helper;
-
+using System.Text.Json;
 
 internal class Program
 {
@@ -22,13 +22,11 @@ internal class Program
 		string EthMainnetURl = config["EthMainnetURl"] ?? "";
 
 		var tokensDictionary = config.GetSection("TokenWalletAddress").Get<Dictionary<string, string>>();
-		var TokenList = tokensDictionary.Select(kvp => new TokenAddress { Chain = (DexScreenerClient.Chain)int.Parse(kvp.Key), CoinAddress = kvp.Value }).ToList();
+		var TokenList = tokensDictionary.Select(kvp => new TokenAddress { Chain = (Chain)int.Parse(kvp.Key), CoinAddress = kvp.Value }).ToList();
 
 		//Calls to ETH mainnet using MetaMaskApi to get wallet ETH balance.
 		Phantom.PhantomWallet UniswapWallet = new TradeBot.Network.Phantom.PhantomWallet($"{EthMainnetURl}{MetaMaskApiKey}");
-		Helper.AccountInfo accountInfo = await UniswapWallet.GetAccountAsync(walletAddress);
-
-		Console.WriteLine($"ETH Balance: {accountInfo.EthBalance} ETH");
+		AccountInfo accountInfo = await UniswapWallet.GetAccountAsync(walletAddress);
 
 		//Intialize Empty token list;
 		List<TokenBalance> tokenBalances = new List<TokenBalance>();
@@ -41,42 +39,53 @@ internal class Program
 		BaseWallet Basewallet = new Ethereum.BaseWallet(BasescanApiKey);
 		tokenBalances.AddRange(await Basewallet.GetBaseErc20TokenBalancesAsync(walletAddress));
 
+		//Filter the other coins that we're not interested in.
+		tokenBalances = tokenBalances.Where(t => tokensDictionary.Any(d => d.Value.ToLower() == t.ContractAddress.ToLower())).ToList();
+
+		//The while loop starts here
+
 		//Call to Dexscreener API to get coin data.
 		DexScreenerClient dexScreenerClient = new DexScreenerClient();
 
-		foreach (TokenAddress token in TokenList)
+		//Initialize chatgpt analyzer.
+		Chatgpt.ChatGPTAnalyzer chatgpt = new Chatgpt.ChatGPTAnalyzer(ChatgptApiKey);
+
+		foreach (TokenBalance token in tokenBalances)
 		{
-			string coindData = await dexScreenerClient.GetTokenInfo(token.Chain, token.CoinAddress);
+			try
+			{
+				//Get coin data from dex screener
+				DexTokenData? coinData = await dexScreenerClient.GetTokenInfo(token.Chain, token.ContractAddress);
+
+				bool CapturedGraph = await TradeView.RunAsync(coinData);
+
+				string choice = await chatgpt.AnalyzeChartWithImageAsync(coinData, dexScreenerClient.BuildExtraPrompt(tokenBalances, coinData));
+
+				switch (choice)
+				{
+					case "BUY_TOKEN":
+						Chatgpt.BuyCoin();
+						break;
+					case "SELL_TOKEN":
+						Chatgpt.SellCoin();
+						break;
+					case "HOLD_TOKEN":
+						Chatgpt.HoldCoin();
+						break;
+					default:
+						Console.WriteLine("No valid decision received.");
+						break;
+				}
+
+			}
+			catch (Exception ex) 
+			{ 
+				Console.WriteLine(ex);
+			}
+
+
+
 		}
 
-
-		//Chatgpt.ChatGPTAnalyzer chatgpt = new Chatgpt.ChatGPTAnalyzer(ChatgptApiKey);
-
-		////string tokenJson = landwolf;
-		////await chatgpt.AnalyzeAsync(tokenJson);
-		////string decision = await chatgpt.AnalyzeAsync(tokenJson);
-		////Console.WriteLine($"AI decision: {decision}");
-
-		//string imagePath = "C:\\Github\\TradeBot\\TradeBot\\Images\\Landwolf.png"; // Replace with your path
-		//byte[] imageBytes = File.ReadAllBytes(imagePath);
-		//string base64Image = Convert.ToBase64String(imageBytes);
-
-		//string choice = await chatgpt.AnalyzeChartWithImageAsync(base64Image);
-
-		//switch (choice)
-		//{
-		//	case "BUY_TOKEN":
-		//		Chatgpt.BuyCoin();
-		//		break;
-		//	case "SELL_TOKEN":
-		//		Chatgpt.SellCoin();
-		//		break;
-		//	case "HOLD_TOKEN":
-		//		Chatgpt.HoldCoin();
-		//		break;
-		//	default:
-		//		Console.WriteLine("No valid decision received.");
-		//		break;
-		//}
 	}
 }
