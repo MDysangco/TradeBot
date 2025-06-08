@@ -2426,11 +2426,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\dysan\\Documents\\GitHub\\TradeBot\\TradeBot\\TradeBot.csproj",
+      "projectUniqueName": "C:\\Github\\TradeBot\\TradeBot\\TradeBot.csproj",
       "projectName": "TradeBot",
-      "projectPath": "C:\\Users\\dysan\\Documents\\GitHub\\TradeBot\\TradeBot\\TradeBot.csproj",
+      "projectPath": "C:\\Github\\TradeBot\\TradeBot\\TradeBot.csproj",
       "packagesPath": "C:\\Users\\dysan\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\dysan\\Documents\\GitHub\\TradeBot\\TradeBot\\obj\\",
+      "outputPath": "C:\\Github\\TradeBot\\TradeBot\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -2445,6 +2445,7 @@
       ],
       "sources": {
         "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+        "C:\\Program Files\\dotnet\\library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
@@ -2462,8 +2463,7 @@
         "enableAudit": "true",
         "auditLevel": "low",
         "auditMode": "direct"
-      },
-      "SdkAnalysisLevel": "9.0.300"
+      }
     },
     "frameworks": {
       "net8.0": {
@@ -2510,7 +2510,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.300/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.200/PortableRuntimeIdentifierGraph.json"
       }
     }
   }

@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "3IqxZdKB2ps=",
+  "dgSpecHash": "E08JtROXp8qjo3UVtDQelmL/WJpFC+AmqB+mPRwwMEp7hVf4f4XhLAutFBaKCC7Y4dkHl4pEXfIXNkzrg5dCkg==",
   "success": true,
-  "projectFilePath": "C:\\Users\\dysan\\Documents\\GitHub\\TradeBot\\TradeBot\\TradeBot.csproj",
+  "projectFilePath": "C:\\Github\\TradeBot\\TradeBot\\TradeBot.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\dysan\\.nuget\\packages\\adraffy.ensnormalize\\0.1.5\\adraffy.ensnormalize.0.1.5.nupkg.sha512",
     "C:\\Users\\dysan\\.nuget\\packages\\bouncycastle.cryptography\\2.5.1\\bouncycastle.cryptography.2.5.1.nupkg.sha512",
